@@ -1,55 +1,49 @@
-# AI Idea Validator для стартапов
+# AI Idea Validator (Production-ready MVP skeleton)
 
-Теперь это рабочий MVP c аккаунтами, ролями и web UI.
+Проект переработан архитектурно: логика разделена по слоям, добавлены чат-история, таблицы/графики в ответах, auth UI и публичные страницы для запуска.
+
+## Архитектура
+
+- `app/main.py` — bootstrap приложения, роутеры, error-handling policy.
+- `app/core/db.py` — SQLite и инициализация схемы.
+- `app/models/schemas.py` — Pydantic-схемы DTO.
+- `app/services/` — бизнес-логика (`auth_service`, `report_service`, `chat_service`).
+- `app/routers/` — transport-слой API/UI (`auth`, `ideas`, `chat`, `pages`).
+- `app/prompts.py` — конфиг поддерживаемых моделей и prompt templates.
 
 ## Что реализовано
 
-- Аккаунты (`/auth/register`, `/auth/login`) с ролями `user` и `admin`.
-- Авторизация API через заголовок `X-API-Token`.
-- Анализ идеи: `POST /ideas/analyze`.
-- История идей пользователя: `GET /ideas/history/{user_id}`.
-- Просмотр конкретного отчёта: `GET /ideas/{idea_id}`.
-- Список подключенных моделей: `GET /models`.
-- Preview промпта под модель: `POST /prompts/preview`.
-- User UI: `GET /ui/user/{user_id}`.
-- Admin UI: `GET /ui/admin`.
+### 1) Accounts + login
+- Регистрация/логин по email+password: `POST /auth/register`, `POST /auth/login`.
+- Role-based access: `user` / `admin`.
+- API auth через `X-API-Token`.
 
-## Архитектура данных
+### 2) Social login providers (MVP flow)
+- `GET /auth/oauth/{provider}/start` (`google`, `github`, `apple`, `microsoft`).
+- `GET /auth/oauth/{provider}/callback?email=...` (демо callback для локальной среды).
 
-SQLite таблицы:
-- `users`: email, hash пароля, role, api_token.
-- `reports`: user_id, идея, модель, JSON-отчёт, timestamp.
+### 3) Idea validator
+- `POST /ideas/analyze` — сохраняет отчёт в БД.
+- `GET /ideas/history/{user_id}` — история идей.
+- `GET /ideas/{idea_id}` — детальная карточка.
 
-## Пример сценария
+### 4) Chat + history
+- `POST /chat/message` — сообщение пользователя + ответ ассистента.
+- `GET /chat/history/{user_id}` — полная история чата.
 
-1. Зарегистрировать пользователя:
+### 5) Графики и таблицы в ответах
+- В `IdeaReport` добавлены `tables` и `charts` для отображения в UI.
 
-```bash
-curl -X POST http://127.0.0.1:8000/auth/register \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"founder@example.com","password":"secret123","role":"user"}'
-```
+### 6) Public pages and policies
+- `/`, `/pricing`, `/privacy`, `/terms`, `/cookies`, `/security`.
+- Кастомная 404 страница для web-трафика.
 
-2. Сделать анализ:
+### 7) UI pages
+- `/auth/register/page`, `/auth/login/page`.
+- `/ui/user/{user_id}`.
+- `/ui/admin`.
 
-```bash
-curl -X POST http://127.0.0.1:8000/ideas/analyze \
-  -H 'Content-Type: application/json' \
-  -H 'X-API-Token: <TOKEN>' \
-  -d '{
-    "user_id":"1",
-    "title":"AI Idea Validator",
-    "idea":"Сервис анализирует стартап-идею и формирует roadmap.",
-    "region":"EU",
-    "model":"gpt-4o-mini"
-  }'
-```
-
-3. Открыть UI:
-- Пользователь: `http://127.0.0.1:8000/ui/user/1`
-- Админ: `http://127.0.0.1:8000/ui/admin`
-
-## Локальный запуск
+## Запуск
 
 ```bash
 python -m venv .venv
@@ -58,16 +52,10 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Swagger: `http://127.0.0.1:8000/docs`
+- Swagger: `http://127.0.0.1:8000/docs`
 
 ## Тесты
 
 ```bash
 pytest -q
 ```
-
-## Что дальше
-
-- Подключить реальные провайдеры LLM вместо детерминированного генератора.
-- Добавить reset/revoke токенов, JWT и rate limit.
-- Сделать полноценную frontend-панель (React/Vue) вместо server-side HTML.
