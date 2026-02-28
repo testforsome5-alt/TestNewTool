@@ -1,32 +1,53 @@
 # AI Idea Validator для стартапов
 
-Теперь в репозитории есть не только продуктовый бриф, но и рабочий backend MVP.
+Теперь это рабочий MVP c аккаунтами, ролями и web UI.
 
-## Что реализовано в коде
+## Что реализовано
 
-- FastAPI API для анализа идеи.
-- Генерация структурированного отчёта (market, ICP, competitors, roadmap, risks).
-- Сохранение истории анализов в SQLite.
-- Получение списка прошлых идей пользователя.
-- Получение конкретного отчёта по `idea_id`.
+- Аккаунты (`/auth/register`, `/auth/login`) с ролями `user` и `admin`.
+- Авторизация API через заголовок `X-API-Token`.
+- Анализ идеи: `POST /ideas/analyze`.
+- История идей пользователя: `GET /ideas/history/{user_id}`.
+- Просмотр конкретного отчёта: `GET /ideas/{idea_id}`.
+- Список подключенных моделей: `GET /models`.
+- Preview промпта под модель: `POST /prompts/preview`.
+- User UI: `GET /ui/user/{user_id}`.
+- Admin UI: `GET /ui/admin`.
 
-## API endpoints
+## Архитектура данных
 
-- `GET /health` — проверка работоспособности.
-- `POST /ideas/analyze` — анализ идеи и сохранение в историю.
-- `GET /ideas/history/{user_id}` — история идей пользователя.
-- `GET /ideas/{idea_id}` — детальный просмотр одного отчёта.
+SQLite таблицы:
+- `users`: email, hash пароля, role, api_token.
+- `reports`: user_id, идея, модель, JSON-отчёт, timestamp.
 
-## Пример запроса
+## Пример сценария
 
-```json
-{
-  "user_id": "founder-1",
-  "title": "AI Idea Validator",
-  "idea": "Сервис для быстрой валидации стартап-идей с roadmap и историей.",
-  "region": "Global"
-}
+1. Зарегистрировать пользователя:
+
+```bash
+curl -X POST http://127.0.0.1:8000/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"founder@example.com","password":"secret123","role":"user"}'
 ```
+
+2. Сделать анализ:
+
+```bash
+curl -X POST http://127.0.0.1:8000/ideas/analyze \
+  -H 'Content-Type: application/json' \
+  -H 'X-API-Token: <TOKEN>' \
+  -d '{
+    "user_id":"1",
+    "title":"AI Idea Validator",
+    "idea":"Сервис анализирует стартап-идею и формирует roadmap.",
+    "region":"EU",
+    "model":"gpt-4o-mini"
+  }'
+```
+
+3. Открыть UI:
+- Пользователь: `http://127.0.0.1:8000/ui/user/1`
+- Админ: `http://127.0.0.1:8000/ui/admin`
 
 ## Локальный запуск
 
@@ -37,28 +58,16 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-После запуска: `http://127.0.0.1:8000/docs`
+Swagger: `http://127.0.0.1:8000/docs`
 
 ## Тесты
 
 ```bash
-pytest
+pytest -q
 ```
 
-## Product brief (кратко)
+## Что дальше
 
-### Формат продукта
-- Вводишь идею.
-- Получаешь анализ: рынок, ICP, конкуренты, MVP roadmap.
-- История идей хранится в аккаунте.
-
-### Монетизация
-- Free: 3 анализа/месяц.
-- Pro: безлимит + экспорт.
-- Team: общий workspace.
-
-### MVP roadmap
-1. Week 1: customer discovery.
-2. Week 2–3: landing + fake door.
-3. Week 4–5: core MVP loop.
-4. Week 6: pricing и первый пилот.
+- Подключить реальные провайдеры LLM вместо детерминированного генератора.
+- Добавить reset/revoke токенов, JWT и rate limit.
+- Сделать полноценную frontend-панель (React/Vue) вместо server-side HTML.
